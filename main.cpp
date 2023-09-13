@@ -105,39 +105,29 @@ convertRGBtoYCbCr (Image *in, Image *out)
       for (int x = 0; x < height; x++)
         {
 
-//          float R = in->rc->data[x * width + y];
-//          float G = in->gc->data[x * width + y];
-//          float B = in->bc->data[x * width + y];
-//          float Y = 0 + ((float)0.299 * R) + ((float)0.587 * G)
-//                    + ((float)0.113 * B);
-//          float Cb = 128 - ((float)0.168736 * R) - ((float)0.331264 * G)
-//                     + ((float)0.5 * B);
-//          float Cr = 128 + ((float)0.5 * R) - ((float)0.418688 * G)
-//                     - ((float)0.081312 * B);
 
-          __m256 r = _mm256_load_ps( in->rc->data + x * width + y);
-          cout<<x << " ***** " << y<< endl;
-          __m256 g = _mm256_load_ps( in->gc->data + x * width + y );
-          __m256 b = _mm256_load_ps(in->bc->data + x * width + y);
-          cout<<x << " ***** " << y<< endl;
+          __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
+          __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
+          __m256 gv = _mm256_loadu_ps( in->gc->data + x * width + y );
+
           __m256 yy = _mm256_add_ps(_mm256_set1_ps(0.0f),
                                  _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.299f), r),
-                                             _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.587f), g),
+                                             _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.587f), gv),
                                                          _mm256_mul_ps(_mm256_set1_ps(0.113f), b))));
 
           __m256 cb = _mm256_sub_ps(_mm256_set1_ps(128.f),
                                     _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.168736f), r),
-                                                   _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.331264), g),
+                                                   _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.331264), gv),
                                                                   _mm256_mul_ps(_mm256_set1_ps(0.5f), b))));
 
           __m256 cr = _mm256_add_ps(_mm256_set1_ps(128.f),
                                      _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.5), r),
-                                                    _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.418688), g),
+                                                    _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.418688), gv),
                                                                    _mm256_mul_ps(_mm256_set1_ps(0.081312), b))));
 
-          _mm256_store_ps(&out->rc->data[x * width + y], yy);
-          _mm256_store_ps(&out->gc->data[x * width + y], cb);
-          _mm256_store_ps(&out->bc->data[x * width + y], cr);
+          _mm256_storeu_ps(&out->rc->data[x * width + y], yy);
+          _mm256_storeu_ps(&out->gc->data[x * width + y], cb);
+          _mm256_storeu_ps(&out->bc->data[x * width + y], cr);
         }
     }
 

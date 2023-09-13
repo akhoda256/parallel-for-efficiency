@@ -27,7 +27,7 @@ PERF_FLAGS = -pg # comment this line out if not using gprof
 
 CXX = g++
 CXXFLAGS = $(DEBUG_FLAGS) $(PERF_FLAGS) -I /usr/include/libxml2/ -fopenmp \
-	-mavx -std=c++17
+	-march=native -mavx2 -std=c++17
 LDFLAGS = $(PERF_FLAGS)
 LDLIBS = -lxml2 -ltiff -fopenmp
 

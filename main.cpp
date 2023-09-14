@@ -95,7 +95,37 @@ convertRGBtoYCbCrC (Image *in, Image *out)
 }
 
 void
-convertRGBtoYCbCr (Image *in, Image *out)
+convertRGBtoYCbCrCP (Image *in, Image *out)
+{
+  int width = in->width;
+  int height = in->height;
+  #pragma omp parallel for num_threads(2)
+  for (int x = 0; x < height; x++)  //change the memory access patterns
+    {
+      for (int y = 0; y < width; y++)
+        {
+
+          float R = in->rc->data[x * width + y];
+          float G = in->gc->data[x * width + y];
+          float B = in->bc->data[x * width + y];
+          float Y = 0 + ((float)0.299 * R) + ((float)0.587 * G)
+                    + ((float)0.113 * B);
+          float Cb = 128 - ((float)0.168736 * R) - ((float)0.331264 * G)
+                     + ((float)0.5 * B);
+          float Cr = 128 + ((float)0.5 * R) - ((float)0.418688 * G)
+                     - ((float)0.081312 * B);
+          out->rc->data[x * width + y] = Y;
+          out->gc->data[x * width + y] = Cb;
+          out->bc->data[x * width + y] = Cr;
+        }
+    }
+
+  // return out;
+}
+
+
+void
+convertRGBtoYCbCrS (Image *in, Image *out)
 {
   int width = in->width;
   int height = in->height;
@@ -128,6 +158,187 @@ convertRGBtoYCbCr (Image *in, Image *out)
           _mm256_storeu_ps(&out->rc->data[x * width + y], yy);
           _mm256_storeu_ps(&out->gc->data[x * width + y], cb);
           _mm256_storeu_ps(&out->bc->data[x * width + y], cr);
+        }
+    }
+
+  // return out;
+}
+
+void
+convertRGBtoYCbCrCS (Image *in, Image *out)
+{
+  int width = in->width;
+  int height = in->height;
+
+    for (int x = 0; x < height; x++)
+    {
+        for (int y = 0; y < width; y+=8)
+        {
+
+
+          __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
+          __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
+          __m256 gv = _mm256_loadu_ps( in->gc->data + x * width + y );
+
+          __m256 yy = _mm256_add_ps(_mm256_set1_ps(0.0f),
+                                     _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.299f), r),
+                                                    _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.587f), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.113f), b))));
+
+          __m256 cb = _mm256_sub_ps(_mm256_set1_ps(128.f),
+                                     _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.168736f), r),
+                                                    _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.331264), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.5f), b))));
+
+          __m256 cr = _mm256_add_ps(_mm256_set1_ps(128.f),
+                                     _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.5), r),
+                                                    _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.418688), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.081312), b))));
+
+          _mm256_storeu_ps(&out->rc->data[x * width + y], yy);
+          _mm256_storeu_ps(&out->gc->data[x * width + y], cb);
+          _mm256_storeu_ps(&out->bc->data[x * width + y], cr);
+        }
+    }
+
+  // return out;
+}
+
+void
+convertRGBtoYCbCrCSP (Image *in, Image *out)
+{
+  int width = in->width;
+  int height = in->height;
+
+  #pragma omp parallel for num_threads(2)
+  for (int x = 0; x < height; x++)
+    {
+      for (int y = 0; y < width; y+=8)
+        {
+
+
+          __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
+          __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
+          __m256 gv = _mm256_loadu_ps( in->gc->data + x * width + y );
+
+          __m256 yy = _mm256_add_ps(_mm256_set1_ps(0.0f),
+                                     _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.299f), r),
+                                                    _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.587f), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.113f), b))));
+
+          __m256 cb = _mm256_sub_ps(_mm256_set1_ps(128.f),
+                                     _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.168736f), r),
+                                                    _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.331264), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.5f), b))));
+
+          __m256 cr = _mm256_add_ps(_mm256_set1_ps(128.f),
+                                     _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.5), r),
+                                                    _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.418688), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.081312), b))));
+
+          _mm256_storeu_ps(&out->rc->data[x * width + y], yy);
+          _mm256_storeu_ps(&out->gc->data[x * width + y], cb);
+          _mm256_storeu_ps(&out->bc->data[x * width + y], cr);
+        }
+    }
+
+  // return out;
+}
+void
+convertRGBtoYCbCrSP (Image *in, Image *out)
+{
+  int width = in->width;
+  int height = in->height;
+
+  #pragma omp parallel for num_threads(1)
+  for (int y = 0; y < width; y+=8)
+    {
+      for (int x = 0; x < height; x++)
+        {
+
+
+          __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
+          __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
+          __m256 gv = _mm256_loadu_ps( in->gc->data + x * width + y );
+
+          __m256 yy = _mm256_add_ps(_mm256_set1_ps(0.0f),
+                                     _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.299f), r),
+                                                    _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.587f), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.113f), b))));
+
+          __m256 cb = _mm256_sub_ps(_mm256_set1_ps(128.f),
+                                     _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.168736f), r),
+                                                    _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.331264), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.5f), b))));
+
+          __m256 cr = _mm256_add_ps(_mm256_set1_ps(128.f),
+                                     _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.5), r),
+                                                    _mm256_sub_ps(_mm256_mul_ps(_mm256_set1_ps(0.418688), gv),
+                                                                   _mm256_mul_ps(_mm256_set1_ps(0.081312), b))));
+
+          _mm256_storeu_ps(&out->rc->data[x * width + y], yy);
+          _mm256_storeu_ps(&out->gc->data[x * width + y], cb);
+          _mm256_storeu_ps(&out->bc->data[x * width + y], cr);
+        }
+    }
+
+  // return out;
+}
+
+
+void
+convertRGBtoYCbCrP (Image *in, Image *out)
+{
+  int width = in->width;
+  int height = in->height;
+
+  #pragma omp parallel for num_threads(4)
+  for (int y = 0; y < width; y++)
+    {
+      for (int x = 0; x < height; x++)
+        {
+
+          float R = in->rc->data[x * width + y];
+          float G = in->gc->data[x * width + y];
+          float B = in->bc->data[x * width + y];
+          float Y = 0 + ((float)0.299 * R) + ((float)0.587 * G)
+                    + ((float)0.113 * B);
+          float Cb = 128 - ((float)0.168736 * R) - ((float)0.331264 * G)
+                     + ((float)0.5 * B);
+          float Cr = 128 + ((float)0.5 * R) - ((float)0.418688 * G)
+                     - ((float)0.081312 * B);
+          out->rc->data[x * width + y] = Y;
+          out->gc->data[x * width + y] = Cb;
+          out->bc->data[x * width + y] = Cr;
+        }
+    }
+
+  // return out;
+}
+
+void
+convertRGBtoYCbCr (Image *in, Image *out)
+{
+  int width = in->width;
+  int height = in->height;
+
+  for (int y = 0; y < width; y++)
+    {
+      for (int x = 0; x < height; x++)
+        {
+
+          float R = in->rc->data[x * width + y];
+          float G = in->gc->data[x * width + y];
+          float B = in->bc->data[x * width + y];
+          float Y = 0 + ((float)0.299 * R) + ((float)0.587 * G)
+                    + ((float)0.113 * B);
+          float Cb = 128 - ((float)0.168736 * R) - ((float)0.331264 * G)
+                     + ((float)0.5 * B);
+          float Cr = 128 + ((float)0.5 * R) - ((float)0.418688 * G)
+                     - ((float)0.081312 * B);
+          out->rc->data[x * width + y] = Y;
+          out->gc->data[x * width + y] = Cb;
+          out->bc->data[x * width + y] = Cr;
         }
     }
 
@@ -323,6 +534,58 @@ downSampleC (Channel *in)
           y += 2;
         }
       x += 2;
+    }
+
+  return out;
+}
+
+Channel *
+downSampleCP (Channel *in)
+{
+  int width = in->width;
+  int height = in->height;
+  int w2 = width / 2;
+  int h2 = height / 2;
+
+  Channel *out = new Channel ((width / 2), (height / 2));
+  int x = 0;
+  #pragma omp parallel for num_threads(1)
+  for (int x2 = 0; x2 < h2; x2++) //change access pattern
+    {
+      for (int y2 = 0, y = 0; y2 < w2; y2++)
+        {
+
+          out->data[x2 * w2 + y2] = in->data[x * width + y];
+          y += 2;
+        }
+      x += 2;
+    }
+
+  return out;
+}
+
+
+Channel *
+downSampleP (Channel *in)
+{
+  int width = in->width;
+  int height = in->height;
+  int w2 = width / 2;
+  int h2 = height / 2;
+
+  Channel *out = new Channel ((width / 2), (height / 2));
+
+  int y = 0;
+  #pragma omp parallel for num_threads(1)
+  for (int y2 = 0; y2 < w2; y2++)
+    {
+      for (int x2 = 0, x = 0; x2 < h2; x2++)
+        {
+
+          out->data[x2 * w2 + y2] = in->data[x * width + y];
+          x += 2;
+        }
+      y += 2;
     }
 
   return out;

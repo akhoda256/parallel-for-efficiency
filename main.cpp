@@ -135,10 +135,14 @@ convertRGBtoYCbCrS (Image *in, Image *out)
       for (int x = 0; x < height; x++)
         {
 
+          _mm_prefetch(&in->rc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->bc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->gc->data[x * width + y], _MM_HINT_T0);
 
           __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
-          __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
-          __m256 gv = _mm256_loadu_ps( in->gc->data + x * width + y );
+          __m256 b = _mm256_loadu_ps(&in->bc->data[x * width + y]);
+          __m256 gv = _mm256_loadu_ps( &in->gc->data[x* width + y] );
+
 
           __m256 yy = _mm256_add_ps(_mm256_set1_ps(0.0f),
                                  _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.299f), r),
@@ -175,6 +179,9 @@ convertRGBtoYCbCrCS (Image *in, Image *out)
         for (int y = 0; y < width; y+=8)
         {
 
+          _mm_prefetch(&in->rc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->bc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->gc->data[x * width + y], _MM_HINT_T0);
 
           __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
           __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
@@ -216,10 +223,13 @@ convertRGBtoYCbCrCSP (Image *in, Image *out)
       for (int y = 0; y < width; y+=8)
         {
 
+          _mm_prefetch(&in->rc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->bc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->gc->data[x * width + y], _MM_HINT_T0);
 
           __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
-          __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
-          __m256 gv = _mm256_loadu_ps( in->gc->data + x * width + y );
+          __m256 b = _mm256_loadu_ps(&in->bc->data [x * width + y]);
+          __m256 gv = _mm256_loadu_ps( &in->gc->data[ x * width + y] );
 
           __m256 yy = _mm256_add_ps(_mm256_set1_ps(0.0f),
                                      _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.299f), r),
@@ -250,16 +260,19 @@ convertRGBtoYCbCrSP (Image *in, Image *out)
   int width = in->width;
   int height = in->height;
 
-  #pragma omp parallel for num_threads(1)
+  #pragma omp parallel for num_threads(2)
   for (int y = 0; y < width; y+=8)
     {
       for (int x = 0; x < height; x++)
         {
 
+          _mm_prefetch(&in->rc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->bc->data[x * width + y], _MM_HINT_T0);
+          _mm_prefetch(&in->gc->data[x * width + y], _MM_HINT_T0);
 
           __m256 r = _mm256_loadu_ps( &in->rc->data[x * width + y] );
-          __m256 b = _mm256_loadu_ps(in->bc->data + x * width + y);
-          __m256 gv = _mm256_loadu_ps( in->gc->data + x * width + y );
+          __m256 b = _mm256_loadu_ps(&in->bc->data [ x * width + y]);
+          __m256 gv = _mm256_loadu_ps( &in->gc->data [x * width + y ]);
 
           __m256 yy = _mm256_add_ps(_mm256_set1_ps(0.0f),
                                      _mm256_add_ps(_mm256_mul_ps(_mm256_set1_ps(0.299f), r),
@@ -292,7 +305,7 @@ convertRGBtoYCbCrP (Image *in, Image *out)
   int width = in->width;
   int height = in->height;
 
-  #pragma omp parallel for num_threads(4)
+  #pragma omp parallel for num_threads(2)
   for (int y = 0; y < width; y++)
     {
       for (int x = 0; x < height; x++)
@@ -549,16 +562,13 @@ downSampleCP (Channel *in)
 
   Channel *out = new Channel ((width / 2), (height / 2));
   int x = 0;
-  #pragma omp parallel for num_threads(1)
+  #pragma omp parallel for num_threads(2)
   for (int x2 = 0; x2 < h2; x2++) //change access pattern
     {
-      for (int y2 = 0, y = 0; y2 < w2; y2++)
+      for (int y2 = 0; y2 < w2; y2++)
         {
-
-          out->data[x2 * w2 + y2] = in->data[x * width + y];
-          y += 2;
+          out->data[x2 * w2 + y2] = in->data[2*x2 * width + 2*y2];
         }
-      x += 2;
     }
 
   return out;
@@ -968,21 +978,23 @@ encode ()
       // Downsample the difference
       print ("Downsample...");
 
-      gettimeofday (&starttime, NULL);
+
       Frame *frame_downsampled = new Frame (width, height, DOWNSAMPLE);
 
       // We don't touch the Y frame
       frame_downsampled->Y->copy (frame_lowpassed_final->Y);
+      gettimeofday (&starttime, NULL);
       Channel *frame_downsampled_cb = downSample (frame_lowpassed_final->Cb);
+      gettimeofday (&endtime, NULL);
       frame_downsampled->Cb->copy (frame_downsampled_cb);
       Channel *frame_downsampled_cr = downSample (frame_lowpassed_final->Cr);
       frame_downsampled->Cr->copy (frame_downsampled_cr);
-      gettimeofday (&endtime, NULL);
+
       runtime[4] = double (endtime.tv_sec) * 1000.0f
                    + double (endtime.tv_usec) / 1000.0f
                    - double (starttime.tv_sec) * 1000.0f
                    - double (starttime.tv_usec) / 1000.0f; // in ms
-
+      cout<<"*****" << runtime[4] <<endl;
       dump_frame (frame_downsampled, "frame_downsampled", frame_number);
       delete frame_lowpassed_final;
       delete frame_downsampled_cb;

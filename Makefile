@@ -23,13 +23,13 @@ SRCS = custom_types.cpp dct8x8_block.cpp main.cpp xml_aux.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 DEBUG_FLAGS = -g
-PERF_FLAGS = -pg # comment this line out if not using gprof
+PERF_FLAGS = -o3 -pg # comment this line out if not using gprof -ltcmalloc
 
 CXX = g++
 CXXFLAGS = $(DEBUG_FLAGS) $(PERF_FLAGS) -I /usr/include/libxml2/ -fopenmp \
 	-march=native -mavx2 -std=c++17
 LDFLAGS = $(PERF_FLAGS)
-LDLIBS = -lxml2 -ltiff -fopenmp
+LDLIBS = -lxml2 -ltiff -fopenmp -ltcmalloc
 
 .PHONY: all
 all: $(EXEC)

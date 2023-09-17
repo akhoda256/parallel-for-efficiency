@@ -410,7 +410,7 @@ writestats (int framenum, int is_pframe, double *runtime)
         {
           runtime_accum[i] += runtime[i];
           file << setw (30) << left << function_name[i]
-               << std::setprecision (0) << runtime[i] << "ms" << std::endl;
+               << std::setprecision (3) << runtime[i] << "ms" << std::endl;
         }
     }
   file << std::endl;
@@ -429,7 +429,7 @@ closeStats (void)
   for (int i = 0; i < 10; i++)
     {
       total += runtime_accum[i];
-      file << setw (30) << left << function_name[i] << std::setprecision (0)
+      file << setw (30) << left << function_name[i] << std::setprecision (3)
            << runtime_accum[i] << "ms" << std::endl;
     }
   file << std::endl;

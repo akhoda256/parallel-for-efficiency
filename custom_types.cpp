@@ -24,7 +24,8 @@ Channel::Channel (int _width, int _height)
 {
   width = _width;
   height = _height;
-  data = new float[_width * _height];
+  //data = new (std::align_val_t(64)) float[_width * _height];
+  data = static_cast<float*>(std::aligned_alloc(8, _width * _height * sizeof(float)));
 }
 
 Channel::Channel (Channel *in)
